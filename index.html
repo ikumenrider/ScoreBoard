@@ -1,0 +1,300 @@
+import { useState, useCallback } from 'react';
+
+// Tailwind CSS is assumed to be available
+const App = () => {
+  const [mode, setMode] = useState('2p'); // '2p', '3p', 'team'
+  const [scores, setScores] = useState({
+    player1: 0,
+    player2: 0,
+    player3: 0,
+    team1: 0,
+    team2: 0,
+  });
+  const [logs, setLogs] = useState({
+    player1: [],
+    player2: [],
+    player3: [],
+    team1: [],
+    team2: [],
+  });
+  // チーム戦時の現在のプレイヤーを管理するstate
+  const [currentPlayers, setCurrentPlayers] = useState({
+    team1: '',
+    team2: '',
+  });
+
+  const handleScoreChange = useCallback((player, delta, action = null) => {
+    setScores(prevScores => {
+      const newScore = Math.max(0, prevScores[player] + delta);
+      return { ...prevScores, [player]: newScore };
+    });
+
+    if (action) {
+      setLogs(prevLogs => {
+        const newLogs = [...prevLogs[player], { score: delta, action, playerName: currentPlayers[player] }];
+        return { ...prevLogs, [player]: newLogs };
+      });
+    }
+  }, [currentPlayers]);
+  
+  const handleDecrement = useCallback((player) => {
+    setScores(prevScores => {
+      const lastLog = logs[player].at(-1);
+      if (lastLog) {
+        const newScore = Math.max(0, prevScores[player] - lastLog.score);
+        return { ...prevScores, [player]: newScore };
+      }
+      const newScore = Math.max(0, prevScores[player] - 1);
+      return { ...prevScores, [player]: newScore };
+    });
+
+    setLogs(prevLogs => {
+      const newLogs = [...prevLogs[player]];
+      newLogs.pop();
+      return { ...prevLogs, [player]: newLogs };
+    });
+  }, [logs]);
+
+  const handleUndo = useCallback(() => {
+    const lastMoves = Object.keys(logs).flatMap(player => 
+      logs[player].length > 0 ? [{
+        player: player,
+        log: logs[player].at(-1),
+        timestamp: logs[player].length - 1
+      }] : []
+    );
+
+    if (lastMoves.length === 0) return;
+
+    const lastMove = lastMoves.reduce((prev, current) => {
+      return (prev.timestamp > current.timestamp) ? prev : current;
+    });
+
+    if (lastMove) {
+      const player = lastMove.player;
+      const scoreToUndo = lastMove.log.score;
+
+      setScores(prevScores => {
+        const newScore = Math.max(0, prevScores[player] - scoreToUndo);
+        return { ...prevScores, [player]: newScore };
+      });
+
+      setLogs(prevLogs => {
+        const newLogs = [...prevLogs[player]];
+        newLogs.pop();
+        return { ...prevLogs, [player]: newLogs };
+      });
+    }
+  }, [logs]);
+
+  const handleResetScores = useCallback(() => {
+    setScores({
+      player1: 0,
+      player2: 0,
+      player3: 0,
+      team1: 0,
+      team2: 0,
+    });
+    setLogs({
+      player1: [],
+      player2: [],
+      player3: [],
+      team1: [],
+      team2: [],
+    });
+    // チーム戦のプレイヤー表示をリセット
+    setCurrentPlayers({
+      team1: '',
+      team2: '',
+    });
+  }, []);
+
+  const handlePlayerChange = useCallback((team, player) => {
+    setCurrentPlayers(prevPlayers => ({
+      ...prevPlayers,
+      [team]: player
+    }));
+    // 両チームのスコアを0にリセット
+    setScores(prevScores => ({
+      ...prevScores,
+      team1: 0,
+      team2: 0,
+    }));
+  }, []);
+
+  let playersToRender;
+  let gridColsClass;
+
+  if (mode === '2p') {
+    playersToRender = [
+      { id: 'player1', name: 'プレイヤー1', color: 'bg-blue-200' },
+      { id: 'player2', name: 'プレイヤー2', color: 'bg-red-200' },
+    ];
+    gridColsClass = "grid-cols-2";
+  } else if (mode === '3p') {
+    playersToRender = [
+      { id: 'player1', name: 'プレイヤー1', color: 'bg-blue-200' },
+      { id: 'player2', name: 'プレイヤー2', color: 'bg-red-200' },
+      { id: 'player3', name: 'プレイヤー3', color: 'bg-yellow-200' },
+    ];
+    gridColsClass = "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+  } else if (mode === 'team') {
+    playersToRender = [
+      { id: 'team1', name: 'チーム1', color: 'bg-blue-200' },
+      { id: 'team2', name: 'チーム2', color: 'bg-red-200' },
+    ];
+    gridColsClass = "grid-cols-2";
+  }
+  
+  // プレイヤー表示のスタイルを定義
+  const getPlayerDisplayClass = (player) => {
+    switch (player) {
+      case 'P1': return 'bg-gray-200 text-red-500 font-bold p-2 rounded-lg';
+      case 'P2': return 'bg-gray-200 text-yellow-500 font-bold p-2 rounded-lg';
+      case 'P3': return 'bg-gray-200 text-blue-500 font-bold p-2 rounded-lg';
+      default: return '';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4 flex flex-col items-center font-sans">
+      <div className="bg-white p-6 rounded-3xl shadow-xl w-full max-w-4xl border border-gray-200">
+        <h1 className="text-4xl font-extrabold text-center text-gray-900 mb-6 tracking-wide">
+          スコアボード
+        </h1>
+
+        {/* プレイヤー選択ボタン */}
+        <div className="flex justify-center space-x-4 mb-8">
+          <button
+            onClick={() => { setMode('2p'); handleResetScores(); }}
+            className={`p-3 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 font-bold ${
+              mode === '2p' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            2人対戦
+          </button>
+          <button
+            onClick={() => { setMode('3p'); handleResetScores(); }}
+            className={`p-3 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 font-bold ${
+              mode === '3p' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            3人対戦
+          </button>
+          <button
+            onClick={() => { setMode('team'); handleResetScores(); }}
+            className={`p-3 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 font-bold ${
+              mode === 'team' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            チーム戦
+          </button>
+        </div>
+
+        {/* 得点ボード本体 */}
+        <div className={`grid ${gridColsClass} gap-4 mb-8`}>
+          {playersToRender.map(player => (
+            <div
+              key={player.id}
+              className={`flex-1 flex flex-col items-center p-6 rounded-3xl shadow-lg ${player.color} transition-all duration-300`}
+            >
+              <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+                {player.name}
+                {mode === 'team' && currentPlayers[player.id] && (
+                  <span className={`ml-2 text-xl ${getPlayerDisplayClass(currentPlayers[player.id])}`}>
+                    ({currentPlayers[player.id]})
+                  </span>
+                )}
+              </h2>
+              <span className="text-7xl md:text-9xl font-extrabold text-gray-900 leading-none mb-4">
+                {scores[player.id]}
+              </span>
+              <div className="flex flex-col items-center space-y-2">
+                {/* 基本の増減ボタン */}
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleScoreChange(player.id, 1)}
+                    className="w-12 h-12 bg-green-500 text-white text-2xl rounded-full shadow-md hover:bg-green-600 transition-all duration-200 transform hover:scale-110"
+                  >
+                    ⊕
+                  </button>
+                  <button
+                    onClick={() => handleDecrement(player.id)}
+                    className="w-12 h-12 bg-red-500 text-white text-2xl rounded-full shadow-md hover:bg-red-600 transition-all duration-200 transform hover:scale-110"
+                  >
+                    ⊖
+                  </button>
+                </div>
+                {/* チーム戦時のプレイヤー交代ボタン */}
+                {mode === 'team' && (
+                  <div className="flex justify-center space-x-2 mt-2">
+                    <button onClick={() => handlePlayerChange(player.id, 'P1')} className="p-2 bg-gray-200 text-red-500 font-bold rounded-lg hover:bg-gray-300">P1</button>
+                    <button onClick={() => handlePlayerChange(player.id, 'P2')} className="p-2 bg-gray-200 text-yellow-500 font-bold rounded-lg hover:bg-gray-300">P2</button>
+                    <button onClick={() => handlePlayerChange(player.id, 'P3')} className="p-2 bg-gray-200 text-blue-500 font-bold rounded-lg hover:bg-gray-300">P3</button>
+                  </div>
+                )}
+                {/* 新しい追加ボタンを横並びに */}
+                <div className="flex flex-wrap justify-center gap-2 mt-4">
+                  <button
+                    onClick={() => handleScoreChange(player.id, 1, 'Spin')}
+                    className="p-2 bg-yellow-400 text-white font-bold rounded-lg shadow-md hover:bg-yellow-500 transition-all duration-200 transform hover:scale-105"
+                  >
+                    Spin 1
+                  </button>
+                  <button
+                    onClick={() => handleScoreChange(player.id, 2, 'Over')}
+                    className="p-2 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition-all duration-200 transform hover:scale-105"
+                  >
+                    Over 2
+                  </button>
+                  <button
+                    onClick={() => handleScoreChange(player.id, 2, 'Birth')}
+                    className="p-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition-all duration-200 transform hover:scale-105"
+                  >
+                    Birth 2
+                  </button>
+                  <button
+                    onClick={() => handleScoreChange(player.id, 3, 'Xtreme')}
+                    className="p-2 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200 transform hover:scale-105"
+                  >
+                    Xtreme 3
+                  </button>
+                </div>
+              </div>
+              
+              {/* ログの表示 */}
+              <div className="w-full mt-4 p-2 bg-white rounded-lg shadow-inner max-h-24 overflow-y-auto">
+                <h3 className="font-semibold text-gray-700 border-b pb-1 mb-1">得点ログ:</h3>
+                <ul className="text-sm text-gray-600">
+                  {logs[player.id].map((log, index) => (
+                    <li key={index}>
+                      {log.playerName && `${log.playerName}が`} {log.action} (+{log.score})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* スコアリセットボタンと元に戻すボタン */}
+        <div className="flex justify-center space-x-4 mt-6">
+          <button
+            onClick={handleUndo}
+            className="p-3 bg-gray-400 text-white rounded-xl shadow-lg hover:bg-gray-500 transition-all duration-200 transform hover:scale-105"
+          >
+            ↶
+          </button>
+          <button
+            onClick={handleResetScores}
+            className="p-3 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 transition-all duration-200 transform hover:scale-105"
+          >
+            スコアをリセット
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
