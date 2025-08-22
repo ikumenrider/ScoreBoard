@@ -142,6 +142,7 @@
                 playersToRender.forEach(player => {
                     const playerCard = createPlayerCard(player);
                     scoreboardContainer.appendChild(playerCard);
+                    updateLogDisplay(player.id);
                 });
             }
 
@@ -199,11 +200,16 @@
                 if (mode === 'team') {
                     const playerChangeButtonsDiv = document.createElement('div');
                     playerChangeButtonsDiv.className = 'flex justify-center space-x-2 mt-2';
-                    ['P1', 'P2', 'P3'].forEach(p => {
+                    const playerChangeConfig = [
+                        { text: 'P1', player: 'P1', color: 'text-red-500' },
+                        { text: 'P2', player: 'P2', color: 'text-yellow-500' },
+                        { text: 'P3', player: 'P3', color: 'text-blue-500' },
+                    ];
+                    playerChangeConfig.forEach(config => {
                         const btn = document.createElement('button');
-                        btn.className = 'p-2 bg-gray-200 text-red-500 font-bold rounded-lg hover:bg-gray-300';
-                        btn.textContent = p;
-                        btn.addEventListener('click', () => handlePlayerChange(player.id, p));
+                        btn.className = `p-2 bg-gray-200 ${config.color} font-bold rounded-lg hover:bg-gray-300`;
+                        btn.textContent = config.text;
+                        btn.addEventListener('click', () => handlePlayerChange(player.id, config.player));
                         playerChangeButtonsDiv.appendChild(btn);
                     });
                     controlsDiv.appendChild(playerChangeButtonsDiv);
