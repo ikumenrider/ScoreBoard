@@ -65,9 +65,9 @@
             <!-- プレイヤーカードがここに動的に挿入されます -->
         </div>
 
-        <!-- スコアリセットボタンと元に戻すボタンを中央に配置 -->
-        <div class="flex flex-col sm:flex-row justify-center items-center sm:space-x-4 mt-6">
-            <div class="flex space-x-4 mb-4 sm:mb-0">
+        <!-- スコアリセットボタン、元に戻すボタン、アプリ一覧ボタンを中央に配置 -->
+        <div class="flex flex-col items-center space-y-4 mt-6">
+            <div class="flex space-x-4">
                 <button id="btn-undo" class="p-3 bg-gray-400 text-white rounded-xl shadow-lg hover:bg-gray-500 transition-all duration-200 transform hover:scale-105">
                     ↶ 元に戻す
                 </button>
@@ -75,8 +75,8 @@
                     スコアをリセット
                 </button>
             </div>
-        
-            <!-- アプリ一覧ボタンを中央に配置し、テキストカラーを黒に -->
+            
+            <!-- アプリ一覧ボタンを下に配置し、テキストカラーを黒に -->
             <a id="btn-app-list" href="https://ikumenrider.github.io/ikumenrider/" target="_blank" class="p-3 px-5 bg-green-300 text-gray-900 font-bold rounded-xl shadow-lg hover:bg-green-400 transition-all duration-200 transform hover:scale-105">
                 アプリ一覧
             </a>
