@@ -47,8 +47,8 @@
             スコアボード
         </h1>
         
-        <!-- 訪問人数表示 -->
-        <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-center text-gray-600 font-semibold mb-6">
+        <!-- 訪問人数表示 (タイトル直下) -->
+        <div class="text-center text-gray-600 font-semibold mb-6">
             訪問人数: <span id="visitor-count">---</span>人
         </div>
 
@@ -93,38 +93,36 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Firestoreに訪問者数を記録する関数
+        
+        // Firestoreに訪問者数を記録し、UIを更新する関数
         async function updateVisitorCount() {
             try {
-                // ローカルストレージに訪問者IDが保存されているかチェック
-                const visitorId = localStorage.getItem('visitorId');
-                const visitorDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'visitors', 'count');
-
                 // 認証
                 await signInAnonymously(auth);
-                const userId = auth.currentUser?.uid || 'anonymous';
-                
-                // 新規訪問者の場合のみカウントを増やす
-                if (!visitorId) {
-                    await updateDoc(visitorDocRef, {
-                        count: increment(1)
-                    }, { merge: true });
-                    // ローカルストレージにユーザーIDを保存
-                    localStorage.setItem('visitorId', userId);
-                }
 
-                // 最新のカウントを取得して表示を更新
+                const visitorDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'visitors', 'count');
+                
+                // Firestoreドキュメントを更新
+                await updateDoc(visitorDocRef, {
+                    count: increment(1)
+                }, { merge: true });
+
+                // 更新後のカウントを取得してUIに表示
                 const updatedDoc = await getDoc(visitorDocRef);
                 const count = updatedDoc.data()?.count || 0;
                 document.getElementById('visitor-count').textContent = count;
             } catch (error) {
-                console.error("Error updating visitor count:", error);
+                // 認証エラーやFirestoreへの書き込みエラーを処理
+                if (error.code === 'permission-denied') {
+                    console.error("Firestore: Permission denied. Make sure security rules allow public write access.");
+                } else {
+                    console.error("Error updating visitor count:", error);
+                }
                 document.getElementById('visitor-count').textContent = 'エラー';
             }
         }
 
-        // ページ読み込み時に訪問者数を更新
+        // ページが完全に読み込まれた後に訪問者数を更新
         window.onload = updateVisitorCount;
     </script>
 
