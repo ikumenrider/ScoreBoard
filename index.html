@@ -74,6 +74,11 @@
                 スコアをリセット
             </button>
         </div>
+
+        <!-- アプリ一覧ボタンを白い枠内の右下に追加 -->
+        <a id="btn-app-list" href="https://ikumenrider.github.io/ikumenrider/" target="_blank" class="absolute bottom-6 right-6 p-3 px-5 bg-green-300 text-white font-bold rounded-xl shadow-lg hover:bg-green-400 transition-all duration-200 transform hover:scale-105">
+            アプリ一覧
+        </a>
     </div>
     
     <script>
@@ -125,9 +130,9 @@
             renderScoreboard();
 
             // イベントリスナーの設定
-            btn2p.addEventListener('click', () => setModeAndRender('2p', true)); // resetScoresをtrueで渡す
-            btn3p.addEventListener('click', () => setModeAndRender('3p', true)); // resetScoresをtrueで渡す
-            btnTeam.addEventListener('click', () => setModeAndRender('team', true)); // resetScoresをtrueで渡す
+            btn2p.addEventListener('click', () => setModeAndRender('2p', true));
+            btn3p.addEventListener('click', () => setModeAndRender('3p', true));
+            btnTeam.addEventListener('click', () => setModeAndRender('team', true));
             btnUndo.addEventListener('click', handleUndo);
             btnReset.addEventListener('click', handleResetScores);
 
@@ -305,7 +310,7 @@
                 const lastLog = { score: 1, action: '減算' };
                 scores[player] = Math.max(0, scores[player] - lastLog.score);
                 updateScoreDisplay(player);
-                logs[player].push(lastLog); // ログに追加
+                logs[player].push(lastLog);
                 updateLogDisplay(player);
             }
 
@@ -361,8 +366,8 @@
             // チーム戦のプレイヤーを切り替える関数
             function handlePlayerChange(team, player) {
                 currentPlayers[team] = player;
-                scores['team1'] = 0; // チーム1のスコアを0にリセット
-                scores['team2'] = 0; // チーム2のスコアを0にリセット
+                scores['team1'] = 0;
+                scores['team2'] = 0;
                 renderScoreboard();
             }
 
