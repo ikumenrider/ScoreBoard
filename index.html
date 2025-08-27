@@ -10,14 +10,47 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* カスタムスクロールバーのスタイル */
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .log-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .log-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 flex flex-col items-center font-sans min-h-screen">
 
-    <div class="bg-white p-6 rounded-3xl shadow-xl w-full max-w-4xl border border-gray-200">
-        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-6 tracking-wide">
+    <div class="bg-white p-6 rounded-3xl shadow-xl w-full max-w-4xl border border-gray-200 relative">
+        <!-- バージョン情報 (左上) -->
+        <div class="absolute top-4 left-6 text-sm font-semibold text-gray-500">
+            Version:1.0
+        </div>
+        
+        <!-- 製作者情報 (右上) -->
+        <div class="absolute top-4 right-6 flex items-center space-x-2">
+            <span class="text-sm font-semibold text-gray-500">製作者:</span>
+            <a href="https://youtube.com/@ikumenrider?si=LXddF5sxgnGMxwHd" target="_blank" class="p-1 px-3 bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition-all duration-200 transform hover:scale-105 hover:bg-gray-300">
+                育面ライダー
+            </a>
+        </div>
+
+        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-2 mt-10 tracking-wide">
             スコアボード
         </h1>
+        
+        <!-- 訪問人数表示 -->
+        <div class="absolute top-4 left-1/2 transform -translate-x-1/2 text-center text-gray-600 font-semibold mb-6">
+            訪問人数: <span id="visitor-count">---</span>人
+        </div>
 
         <!-- プレイヤー選択ボタン -->
         <div class="flex justify-center space-x-4 mb-8">
@@ -40,13 +73,60 @@
         <!-- スコアリセットボタンと元に戻すボタン -->
         <div class="flex justify-center space-x-4 mt-6">
             <button id="btn-undo" class="p-3 bg-gray-400 text-white rounded-xl shadow-lg hover:bg-gray-500 transition-all duration-200 transform hover:scale-105">
-                ↶
+                ↶ 元に戻す
             </button>
             <button id="btn-reset" class="p-3 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 transition-all duration-200 transform hover:scale-105">
                 スコアをリセット
             </button>
         </div>
     </div>
+    
+    <!-- Firebaseのインポート -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebaseの設定と初期化
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Firestoreに訪問者数を記録する関数
+        async function updateVisitorCount() {
+            try {
+                // ローカルストレージに訪問者IDが保存されているかチェック
+                const visitorId = localStorage.getItem('visitorId');
+                const visitorDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'visitors', 'count');
+
+                // 認証
+                await signInAnonymously(auth);
+                const userId = auth.currentUser?.uid || 'anonymous';
+                
+                // 新規訪問者の場合のみカウントを増やす
+                if (!visitorId) {
+                    await updateDoc(visitorDocRef, {
+                        count: increment(1)
+                    }, { merge: true });
+                    // ローカルストレージにユーザーIDを保存
+                    localStorage.setItem('visitorId', userId);
+                }
+
+                // 最新のカウントを取得して表示を更新
+                const updatedDoc = await getDoc(visitorDocRef);
+                const count = updatedDoc.data()?.count || 0;
+                document.getElementById('visitor-count').textContent = count;
+            } catch (error) {
+                console.error("Error updating visitor count:", error);
+                document.getElementById('visitor-count').textContent = 'エラー';
+            }
+        }
+
+        // ページ読み込み時に訪問者数を更新
+        window.onload = updateVisitorCount;
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -97,15 +177,18 @@
             renderScoreboard();
 
             // イベントリスナーの設定
-            btn2p.addEventListener('click', () => setModeAndRender('2p'));
-            btn3p.addEventListener('click', () => setModeAndRender('3p'));
-            btnTeam.addEventListener('click', () => setModeAndRender('team'));
+            btn2p.addEventListener('click', () => setModeAndRender('2p', true)); // resetScoresをtrueで渡す
+            btn3p.addEventListener('click', () => setModeAndRender('3p', true)); // resetScoresをtrueで渡す
+            btnTeam.addEventListener('click', () => setModeAndRender('team', true)); // resetScoresをtrueで渡す
             btnUndo.addEventListener('click', handleUndo);
             btnReset.addEventListener('click', handleResetScores);
 
-            function setModeAndRender(newMode) {
+            // モードを切り替えてUIを再描画する関数
+            function setModeAndRender(newMode, resetScores = false) {
                 mode = newMode;
-                handleResetScores();
+                if (resetScores) {
+                    handleResetScores();
+                }
                 
                 // ボタンのスタイルを更新
                 btn2p.classList.remove('bg-blue-600', 'text-white');
@@ -125,6 +208,7 @@
                     btnTeam.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
                     btnTeam.classList.add('bg-blue-600', 'text-white');
                 }
+                renderScoreboard();
             }
 
             // スコアボード全体を再描画する関数
@@ -132,9 +216,9 @@
                 const playersToRender = playersConfig[mode];
                 let gridColsClass = '';
                 if (mode === '2p' || mode === 'team') {
-                    gridColsClass = 'grid-cols-2';
+                    gridColsClass = 'grid-cols-1 sm:grid-cols-2';
                 } else if (mode === '3p') {
-                    gridColsClass = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+                    gridColsClass = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
                 }
                 scoreboardContainer.className = `grid ${gridColsClass} gap-4 mb-8`;
                 scoreboardContainer.innerHTML = '';
@@ -235,7 +319,7 @@
 
                 // ログ表示
                 const logContainer = document.createElement('div');
-                logContainer.className = 'w-full mt-4 p-2 bg-white rounded-lg shadow-inner max-h-24 overflow-y-auto';
+                logContainer.className = 'w-full mt-4 p-2 bg-white rounded-lg shadow-inner max-h-24 overflow-y-auto log-container';
                 const logTitle = document.createElement('h3');
                 logTitle.className = 'font-semibold text-gray-700 border-b pb-1 mb-1';
                 logTitle.textContent = '得点ログ:';
@@ -258,39 +342,38 @@
                 scores[player] = Math.max(0, scores[player] + delta);
                 updateScoreDisplay(player);
 
-                if (action) {
-                    const logEntry = { score: delta, action: action, playerName: currentPlayers[player] || null };
-                    logs[player].push(logEntry);
-                    updateLogDisplay(player);
-                }
+                const logEntry = { 
+                    score: delta, 
+                    action: action ? action : (delta > 0 ? '加算' : '減算'), 
+                    playerName: currentPlayers[player] || null 
+                };
+                logs[player].push(logEntry);
+                updateLogDisplay(player);
             }
 
             // スコアを1つ戻す関数
             function handleDecrement(player) {
-                const lastLog = logs[player].at(-1);
-                if (lastLog && lastLog.action) {
-                    scores[player] = Math.max(0, scores[player] - lastLog.score);
-                    logs[player].pop();
-                } else {
-                    scores[player] = Math.max(0, scores[player] - 1);
-                }
+                // デクリメントボタンは-1点として扱う
+                const lastLog = { score: 1, action: '減算' };
+                scores[player] = Math.max(0, scores[player] - lastLog.score);
                 updateScoreDisplay(player);
+                logs[player].push(lastLog); // ログに追加
                 updateLogDisplay(player);
             }
 
             // 全ての操作を元に戻す関数
             function handleUndo() {
-                const lastMoves = Object.keys(logs).flatMap(player => 
-                    logs[player].length > 0 ? [{
+                const allLogs = Object.keys(logs).flatMap(player => 
+                    logs[player].map((log, index) => ({
                         player: player,
-                        log: logs[player].at(-1),
-                        timestamp: logs[player].length - 1
-                    }] : []
+                        log: log,
+                        timestamp: index
+                    }))
                 );
 
-                if (lastMoves.length === 0) return;
+                if (allLogs.length === 0) return;
 
-                const lastMove = lastMoves.reduce((prev, current) => {
+                const lastMove = allLogs.reduce((prev, current) => {
                     return (prev.timestamp > current.timestamp) ? prev : current;
                 });
 
@@ -298,7 +381,7 @@
                     const player = lastMove.player;
                     const scoreToUndo = lastMove.log.score;
                     scores[player] = Math.max(0, scores[player] - scoreToUndo);
-                    logs[player].pop();
+                    logs[player].splice(lastMove.timestamp, 1);
                     updateScoreDisplay(player);
                     updateLogDisplay(player);
                 }
@@ -326,15 +409,12 @@
                 };
                 renderScoreboard();
             }
-
+            
             // チーム戦のプレイヤーを切り替える関数
             function handlePlayerChange(team, player) {
                 currentPlayers[team] = player;
-                scores = {
-                    ...scores,
-                    team1: 0,
-                    team2: 0,
-                };
+                scores['team1'] = 0; // チーム1のスコアを0にリセット
+                scores['team2'] = 0; // チーム2のスコアを0にリセット
                 renderScoreboard();
             }
 
@@ -353,7 +433,7 @@
                     logList.innerHTML = '';
                     logs[player].forEach(log => {
                         const li = document.createElement('li');
-                        li.textContent = `${log.playerName ? `${log.playerName}が` : ''} ${log.action} (+${log.score})`;
+                        li.textContent = `${log.playerName ? `${log.playerName}` : ''} ${log.action} (+${log.score})`;
                         logList.appendChild(li);
                     });
                 }
