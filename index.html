@@ -65,20 +65,22 @@
             <!-- プレイヤーカードがここに動的に挿入されます -->
         </div>
 
-        <!-- スコアリセットボタンと元に戻すボタン -->
-        <div class="flex justify-center space-x-4 mt-6">
-            <button id="btn-undo" class="p-3 bg-gray-400 text-white rounded-xl shadow-lg hover:bg-gray-500 transition-all duration-200 transform hover:scale-105">
-                ↶ 元に戻す
-            </button>
-            <button id="btn-reset" class="p-3 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 transition-all duration-200 transform hover:scale-105">
-                スコアをリセット
-            </button>
+        <!-- スコアリセットボタンと元に戻すボタンを中央に配置 -->
+        <div class="flex flex-col sm:flex-row justify-center items-center sm:space-x-4 mt-6">
+            <div class="flex space-x-4 mb-4 sm:mb-0">
+                <button id="btn-undo" class="p-3 bg-gray-400 text-white rounded-xl shadow-lg hover:bg-gray-500 transition-all duration-200 transform hover:scale-105">
+                    ↶ 元に戻す
+                </button>
+                <button id="btn-reset" class="p-3 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 transition-all duration-200 transform hover:scale-105">
+                    スコアをリセット
+                </button>
+            </div>
+        
+            <!-- アプリ一覧ボタンを中央に配置し、テキストカラーを黒に -->
+            <a id="btn-app-list" href="https://ikumenrider.github.io/ikumenrider/" target="_blank" class="p-3 px-5 bg-green-300 text-gray-900 font-bold rounded-xl shadow-lg hover:bg-green-400 transition-all duration-200 transform hover:scale-105">
+                アプリ一覧
+            </a>
         </div>
-
-        <!-- アプリ一覧ボタンを白い枠内の右下に追加 -->
-        <a id="btn-app-list" href="https://ikumenrider.github.io/ikumenrider/" target="_blank" class="absolute bottom-6 right-6 p-3 px-5 bg-green-300 text-white font-bold rounded-xl shadow-lg hover:bg-green-400 transition-all duration-200 transform hover:scale-105">
-            アプリ一覧
-        </a>
     </div>
     
     <script>
