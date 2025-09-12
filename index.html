@@ -48,7 +48,7 @@
     <div class="bg-white p-6 rounded-3xl shadow-xl w-full max-w-4xl border border-gray-200 relative">
         <!-- バージョン情報 (左上) -->
         <div class="absolute top-4 left-6 text-sm font-semibold text-gray-500">
-            Version:1.0
+            Version:1.1
         </div>
         
         <!-- 製作者情報 (右上) -->
@@ -110,16 +110,11 @@
                 team1: 0,
                 team2: 0,
             };
-            let logs = {
-                player1: [],
-                player2: [],
-                player3: [],
-                team1: [],
-                team2: [],
-            };
+            // すべての得点アクションを記録するグローバルなログ配列
+            let globalLogs = [];
             let currentPlayers = {
-                team1: '',
-                team2: '',
+                team1: 'P1', // 初期値を 'P1' に設定
+                team2: 'P1', // 初期値を 'P1' に設定
             };
             let playersConfig = {
                 '2p': [
@@ -197,8 +192,8 @@
                 playersToRender.forEach(player => {
                     const playerCard = createPlayerCard(player);
                     scoreboardContainer.appendChild(playerCard);
-                    updateLogDisplay(player.id);
                 });
+                updateAllLogDisplays();
             }
 
             // プレイヤーカードのHTML要素を作成する関数
@@ -227,29 +222,13 @@
                 }
 
                 const scoreSpan = document.createElement('span');
-                scoreSpan.className = 'text-7xl md:text-9xl font-extrabold text-gray-900 leading-none mb-4';
+                scoreSpan.className = 'text-7xl md:text-9xl font-extrabold text-gray-900 leading-none mb-4 cursor-pointer';
                 scoreSpan.textContent = scores[player.id];
                 scoreSpan.id = `score-${player.id}`;
-
+                scoreSpan.addEventListener('click', () => handleScoreChange(player.id, 1)); // 得点クリックで+1
+                
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'flex flex-col items-center space-y-2';
-
-                const basicButtonsDiv = document.createElement('div');
-                basicButtonsDiv.className = 'flex space-x-2';
-
-                const incrementBtn = document.createElement('button');
-                incrementBtn.className = 'w-12 h-12 bg-green-500 text-white text-2xl rounded-full shadow-md hover:bg-green-600 transition-all duration-200 transform hover:scale-110';
-                incrementBtn.innerHTML = '⊕';
-                incrementBtn.addEventListener('click', () => handleScoreChange(player.id, 1));
-                basicButtonsDiv.appendChild(incrementBtn);
-
-                const decrementBtn = document.createElement('button');
-                decrementBtn.className = 'w-12 h-12 bg-red-500 text-white text-2xl rounded-full shadow-md hover:bg-red-600 transition-all duration-200 transform hover:scale-110';
-                decrementBtn.innerHTML = '⊖';
-                decrementBtn.addEventListener('click', () => handleDecrement(player.id));
-                basicButtonsDiv.appendChild(decrementBtn);
-
-                controlsDiv.appendChild(basicButtonsDiv);
 
                 // チーム戦時のプレイヤー交代ボタン
                 if (mode === 'team') {
@@ -274,17 +253,30 @@
                 const customButtonsDiv = document.createElement('div');
                 customButtonsDiv.className = 'flex flex-wrap justify-center gap-2 mt-4';
                 const customButtonsConfig = [
-                    { text: 'Spin 1', value: 1, action: 'Spin', color: 'bg-yellow-400', hoverColor: 'hover:bg-yellow-500' },
-                    { text: 'Over 2', value: 2, action: 'Over', color: 'bg-green-500', hoverColor: 'hover:bg-green-600' },
-                    { text: 'Burst 2', value: 2, action: 'Burst', color: 'bg-red-500', hoverColor: 'hover:bg-red-600' },
-                    { text: 'Xtreme 3', value: 3, action: 'Xtreme', color: 'bg-blue-500', hoverColor: 'hover:bg-blue-600' },
+                    { text: 'Spin', value: 1, action: 'Spin', color: 'bg-yellow-400', hoverColor: 'hover:bg-yellow-500' },
+                    { text: 'Over', value: 2, action: 'Over', color: 'bg-green-500', hoverColor: 'hover:bg-green-600' },
+                    { text: 'Burst', value: 2, action: 'Burst', color: 'bg-red-500', hoverColor: 'hover:bg-red-600' },
+                    { text: 'Xtreme', value: 3, action: 'Xtreme', color: 'bg-blue-500', hoverColor: 'hover:bg-blue-600' },
                 ];
                 customButtonsConfig.forEach(btnConfig => {
-                    const btn = document.createElement('button');
-                    btn.className = `p-2 ${btnConfig.color} text-white font-bold rounded-lg shadow-md ${btnConfig.hoverColor} transition-all duration-200 transform hover:scale-105`;
-                    btn.textContent = btnConfig.text;
-                    btn.addEventListener('click', () => handleScoreChange(player.id, btnConfig.value, btnConfig.action));
-                    customButtonsDiv.appendChild(btn);
+                    // ボタン全体を囲むコンテナを作成
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.className = `flex flex-col w-20 items-center p-2 text-center rounded-lg shadow-md ${btnConfig.color} ${btnConfig.hoverColor} transition-all duration-200 transform hover:scale-105 cursor-pointer`;
+                    buttonContainer.addEventListener('click', () => handleScoreChange(player.id, btnConfig.value, btnConfig.action));
+                    
+                    // 決まり手のテキスト
+                    const actionText = document.createElement('span');
+                    actionText.className = 'text-white font-bold text-sm mb-1';
+                    actionText.textContent = btnConfig.text;
+
+                    // 丸で囲まれた得点
+                    const scoreCircle = document.createElement('span');
+                    scoreCircle.className = 'bg-white text-gray-900 font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs';
+                    scoreCircle.textContent = btnConfig.value;
+
+                    buttonContainer.appendChild(actionText);
+                    buttonContainer.appendChild(scoreCircle);
+                    customButtonsDiv.appendChild(buttonContainer);
                 });
                 controlsDiv.appendChild(customButtonsDiv);
 
@@ -314,47 +306,22 @@
                 updateScoreDisplay(player);
 
                 const logEntry = { 
-                    score: delta, 
-                    action: action ? action : (delta > 0 ? '加算' : '減算'), 
-                    playerName: currentPlayers[player] || null 
+                    player: player, 
+                    delta: delta, 
+                    action: action ? action : (delta > 0 ? '加算' : '減算'),
+                    playerName: currentPlayers[player] || null
                 };
-                logs[player].push(logEntry);
-                updateLogDisplay(player);
-            }
-
-            // スコアを1つ戻す関数
-            function handleDecrement(player) {
-                // デクリメントボタンは-1点として扱う
-                const lastLog = { score: 1, action: '減算' };
-                scores[player] = Math.max(0, scores[player] - lastLog.score);
-                updateScoreDisplay(player);
-                logs[player].push(lastLog);
-                updateLogDisplay(player);
+                globalLogs.push(logEntry);
+                updateAllLogDisplays();
             }
 
             // 全ての操作を元に戻す関数
             function handleUndo() {
-                const allLogs = Object.keys(logs).flatMap(player => 
-                    logs[player].map((log, index) => ({
-                        player: player,
-                        log: log,
-                        timestamp: index
-                    }))
-                );
-
-                if (allLogs.length === 0) return;
-
-                const lastMove = allLogs.reduce((prev, current) => {
-                    return (prev.timestamp > current.timestamp) ? prev : current;
-                });
-
-                if (lastMove) {
-                    const player = lastMove.player;
-                    const scoreToUndo = lastMove.log.score;
-                    scores[player] = Math.max(0, scores[player] - scoreToUndo);
-                    logs[player].splice(lastMove.timestamp, 1);
-                    updateScoreDisplay(player);
-                    updateLogDisplay(player);
+                const lastAction = globalLogs.pop();
+                if (lastAction) {
+                    scores[lastAction.player] = Math.max(0, scores[lastAction.player] - lastAction.delta);
+                    updateScoreDisplay(lastAction.player);
+                    updateAllLogDisplays();
                 }
             }
             
@@ -367,16 +334,10 @@
                     team1: 0,
                     team2: 0,
                 };
-                logs = {
-                    player1: [],
-                    player2: [],
-                    player3: [],
-                    team1: [],
-                    team2: [],
-                };
+                globalLogs = [];
                 currentPlayers = {
-                    team1: '',
-                    team2: '',
+                    team1: 'P1', // リセット時にも 'P1' に戻す
+                    team2: 'P1', // リセット時にも 'P1' に戻す
                 };
                 renderScoreboard();
             }
@@ -396,20 +357,36 @@
                     scoreSpan.textContent = scores[player];
                 }
             }
+            
+            // すべてのログ表示を更新する関数
+            function updateAllLogDisplays() {
+                const playersToRender = playersConfig[mode];
+                playersToRender.forEach(player => {
+                    updateLogDisplay(player.id);
+                });
+            }
 
             // ログの表示を更新する関数
-            function updateLogDisplay(player) {
-                const logList = document.getElementById(`log-list-${player}`);
-                if (logList) {
-                    logList.innerHTML = '';
-                    logs[player].forEach(log => {
-                        const li = document.createElement('li');
-                        li.textContent = `${log.playerName ? `${log.playerName}` : ''} ${log.action} (+${log.score})`;
-                        logList.appendChild(li);
-                    });
-                }
+            function updateLogDisplay(playerId) {
+                const logList = document.getElementById(`log-list-${playerId}`);
+                if (!logList) return;
+
+                logList.innerHTML = '';
+                const playerLogs = globalLogs.filter(log => log.player === playerId);
+                playerLogs.forEach(log => {
+                    const li = document.createElement('li');
+                    if (mode === 'team' && log.playerName) {
+                         li.textContent = `${log.playerName} : ${log.action} (+${log.delta})`;
+                    } else {
+                         li.textContent = `${log.action} (+${log.delta})`;
+                    }
+                    logList.appendChild(li);
+                });
+                 // 最新のログが常に見えるようにスクロール
+                logList.scrollTop = logList.scrollHeight;
             }
         });
     </script>
 </body>
 </html>
+
